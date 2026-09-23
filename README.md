@@ -4,7 +4,7 @@
 
 Resume.io, CoverPaste, Coverler, LinkedIn "AI optimizer" tools, and $25–70/mo case-interview coaches are, underneath, a prompt wrapped in a subscription. This is that prompt, run for free, using an AI model you provide the key for yourself.
 
-**Live demo:** `https://YOUR-USERNAME.github.io/unwrapped/` *(fill in once Pages is enabled — see Step 4 below)*
+**Live demo:** `https://dadude044.github.io/unwrapped/` *(fill in once Pages is enabled — see Step 4 below)*
 
 ---
 
