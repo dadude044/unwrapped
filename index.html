@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- CSP: locks the page to only connect to Gemini and load fonts from Google.
+     Blocks any injected script from phoning home elsewhere, even if XSS somehow fires. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'none';
+  script-src 'unsafe-inline';
+  style-src 'unsafe-inline' https://fonts.googleapis.com;
+  font-src https://fonts.gstatic.com;
+  connect-src https://generativelanguage.googleapis.com;
+  img-src 'self' data:;
+  base-uri 'none';
+  form-action 'none';
+  frame-ancestors 'none';
+">
+<title>Unwrapped — the tools, minus the wrapper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1f2933;
+    --paper:#eaede6;
+    --paper-light:#f5f6f1;
+    --accent:#a9782f;
+    --stamp:#a63d2f;
+    --line:#c9c2ae;
+    --line-soft:#d8d3c2;
+    --white:#fffdf8;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans',system-ui,sans-serif;
+    line-height:1.5;
+  }
+  h1,h2,h3{
+    font-family:'Source Serif 4',Georgia,serif;
+    font-weight:600;
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  a{color:inherit;}
+  .wrap{
+    max-width:920px;
+    margin:0 auto;
+    padding:0 24px;
+  }
+
+  /* ---------- header ---------- */
+  header.site{
+    padding:28px 0 20px;
+    border-bottom:1px solid var(--line);
+  }
+  header.site .wrap{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+  .wordmark{
+    font-family:'Source Serif 4',serif;
+    font-size:24px;
+    font-weight:700;
+  }
+  .wordmark span{color:var(--stamp);}
+  .tagline{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    color:#5b6570;
+  }
+
+  /* ---------- shared receipt-line style (used in Price Check tab) ---------- */
+  .receipt-line{
+    display:flex;
+    justify-content:space-between;
+    padding:6px 0;
+    border-bottom:1px dashed var(--line-soft);
+    gap:12px;
+  }
+  .receipt-line .name{color:var(--ink);}
+  .receipt-line .price{color:var(--ink); white-space:nowrap;}
+
+  /* ---------- tool suite ---------- */
+  .suite{padding:40px 0 80px;}
+  /* ---------- key bar ---------- */
+  .key-bar{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+    background:var(--white);
+    border:1px solid var(--line);
+    padding:12px 16px;
+    margin-bottom:8px;
+  }
+  .key-bar label{
+    margin-bottom:0;
+    white-space:nowrap;
+  }
+  .required-badge{
+    background:var(--stamp);
+    color:var(--white);
+    font-size:9px;
+    letter-spacing:0.05em;
+    padding:2px 5px;
+    margin-left:4px;
+    vertical-align:1px;
+  }
+  .key-bar input{
+    flex:1;
+    min-width:180px;
+    margin-bottom:0;
+  }
+  .set-key-btn{
+    font-size:12px;
+    padding:8px 14px;
+    flex-shrink:0;
+  }
+  .key-check{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    color:#2e7d52;
+    font-weight:600;
+    opacity:0;
+    transition:opacity .2s ease;
+    flex-shrink:0;
+  }
+  .key-check.visible{opacity:1;}
+  .key-bar a{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    color:var(--accent);
+    white-space:nowrap;
+    text-decoration:none;
+    border-bottom:1px solid var(--accent);
+  }
+  .key-bar a:hover{color:var(--stamp); border-color:var(--stamp);}
+  .key-note{
+    font-size:12px;
+    color:#8a8f94;
+    margin:0 0 16px;
+  }
+  .usage-bar{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    color:#4b5563;
+    margin-bottom:4px;
+  }
+  .usage-bar strong{color:var(--ink); font-weight:600;}
+  .usage-sep{color:var(--line);}
+  .usage-disclaimer{margin-top:2px; font-style:italic;}
+
+  /* ---------- onboarding panels ---------- */
+  .drawer-group-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:0.08em;
+    color:#a8a29a;
+    padding:16px 20px 6px;
+  }
+
+  .free-banner{
+    background:#f0faf4;
+    border:1px solid #a8d5b5;
+    border-left:3px solid #2e7d52;
+    padding:12px 16px;
+    font-size:14px;
+    color:#1a4731;
+    margin-bottom:22px;
+    font-weight:500;
+  }
+  .step-note{
+    background:var(--paper-light);
+    border:1px solid var(--line);
+    padding:12px 16px;
+    font-size:13px;
+    color:#4b5563;
+    margin-bottom:20px;
+    line-height:1.55;
+  }
+  /* numbered steps (genuinely sequential, so numbers are earned here) */
+  .steps{
+    margin:0 0 18px;
+    padding:0;
+    list-style:none;
+    counter-reset:step;
+  }
+  .steps li{
+    counter-increment:step;
+    position:relative;
+    padding:0 0 16px 34px;
+    font-size:14.5px;
+    line-height:1.55;
+  }
+  .steps li::before{
+    content:counter(step);
+    position:absolute;
+    left:0; top:0;
+    width:22px; height:22px;
+    background:var(--ink);
+    color:var(--white);
+    border-radius:50%;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .limit-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    margin-bottom:20px;
+  }
+  @media (max-width:600px){
+    .limit-grid{grid-template-columns:1fr;}
+  }
+  .limit-card{
+    background:var(--paper-light);
+    border:1px solid var(--line);
+    border-top:3px solid var(--accent);
+    padding:18px 20px;
+  }
+  .limit-num{
+    font-family:'Source Serif 4',serif;
+    font-size:34px;
+    font-weight:700;
+    line-height:1;
+  }
+  .limit-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.04em;
+    color:#6b7280;
+    margin:2px 0 10px;
+  }
+  .limit-card p{
+    font-size:13px;
+    color:#4b5563;
+    margin:0;
+    line-height:1.5;
+  }
+
+  .tool-map{
+    margin-bottom:22px;
+  }
+  .tool-map-item{
+    display:flex;
+    gap:14px;
+    padding:12px 0;
+    border-bottom:1px dashed var(--line-soft);
+    font-size:14px;
+    line-height:1.5;
+  }
+  .tool-map-item:last-child{border-bottom:none;}
+  .tool-map-num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--accent);
+    flex-shrink:0;
+    padding-top:2px;
+  }
+  .next-btn{margin-top:4px;}
+
+  /* ---------- toolbar + drawer nav ---------- */
+  .toolbar{
+    border:1px solid var(--line);
+    border-bottom:none;
+    background:var(--white);
+    padding:2px;
+  }
+  .menu-btn{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:none;
+    border:none;
+    cursor:pointer;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink);
+    padding:12px 14px;
+    width:100%;
+    text-align:left;
+  }
+  .menu-btn:hover{background:var(--paper-light);}
+  .menu-icon{font-size:16px; color:var(--accent);}
+  .drawer-backdrop{
+    position:fixed;
+    inset:0;
+    background:rgba(31,41,51,.4);
+    opacity:0;
+    visibility:hidden;
+    transition:opacity .25s ease;
+    z-index:40;
+  }
+  .drawer-backdrop.open{opacity:1; visibility:visible;}
+  .drawer{
+    position:fixed;
+    top:0; left:0;
+    height:100%;
+    width:270px;
+    max-width:82vw;
+    background:var(--white);
+    border-right:1px solid var(--line);
+    transform:translateX(-100%);
+    transition:transform .3s ease;
+    z-index:50;
+    overflow-y:auto;
+  }
+  .drawer.open{transform:translateX(0);}
+  .drawer-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:20px 20px 14px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.06em;
+    color:#8a8f94;
+    border-bottom:1px solid var(--line);
+    margin-bottom:6px;
+  }
+  .drawer-close{
+    background:none;
+    border:none;
+    font-size:20px;
+    line-height:1;
+    color:var(--ink);
+    cursor:pointer;
+    padding:0 4px;
+  }
+  .drawer-item{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    padding:14px 20px;
+    cursor:pointer;
+    color:#5b6570;
+    border-left:3px solid transparent;
+    line-height:1.4;
+  }
+  .drawer-item:hover{color:var(--ink); background:var(--paper-light);}
+  .drawer-item.active{
+    color:var(--ink);
+    font-weight:600;
+    border-left-color:var(--accent);
+    background:var(--paper-light);
+  }
+  .menu-btn:focus-visible, .drawer-item:focus-visible, .drawer-close:focus-visible,
+  button:focus-visible, input:focus-visible, textarea:focus-visible{
+    outline:2px solid var(--accent);
+    outline-offset:2px;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .drawer, .drawer-backdrop{transition:none;}
+  }
+  .panel-shell{
+    background:var(--white);
+    border:1px solid var(--line);
+    padding:32px;
+  }
+  @media (max-width:600px){
+    .panel-shell{padding:20px;}
+  }
+  .panel{display:none;}
+  .panel.active{display:block;}
+  .panel h2{font-size:21px; margin-bottom:6px;}
+  .panel .sub{
+    font-size:13.5px;
+    color:#6b7280;
+    margin-bottom:22px;
+    max-width:520px;
+  }
+  label{
+    display:block;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    letter-spacing:0.03em;
+    color:#5b6570;
+    margin-bottom:6px;
+  }
+  input[type=text], textarea{
+    width:100%;
+    background:var(--paper-light);
+    border:1px solid var(--line);
+    padding:11px 12px;
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:14px;
+    color:var(--ink);
+    margin-bottom:16px;
+    resize:vertical;
+  }
+  textarea{min-height:110px;}
+  .field-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+  }
+  @media (max-width:600px){
+    .field-row{grid-template-columns:1fr;}
+  }
+  .btn{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    font-weight:500;
+    background:var(--ink);
+    color:var(--white);
+    border:none;
+    padding:12px 20px;
+    cursor:pointer;
+    letter-spacing:0.02em;
+  }
+  .btn:hover{background:#333f4a;}
+  .btn:disabled{background:#9aa1a8; cursor:not-allowed;}
+  .btn.secondary{
+    background:transparent;
+    color:var(--ink);
+    border:1px solid var(--line);
+  }
+  .btn.secondary:hover{background:var(--paper);}
+  .output-wrap{margin-top:24px;}
+  .output-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:8px;
+  }
+  .output-head .label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    color:#5b6570;
+    letter-spacing:0.03em;
+  }
+  .output{
+    background:var(--paper-light);
+    border:1px solid var(--line);
+    border-left:3px solid var(--accent);
+    padding:18px 20px;
+    font-size:14.5px;
+    white-space:pre-wrap;
+    min-height:60px;
+  }
+  .empty-hint{color:#9aa1a8; font-style:italic;}
+  .status{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--accent);
+    margin-top:10px;
+    min-height:16px;
+  }
+  .status.err{color:var(--stamp);}
+
+  /* chat (case prep) */
+  .chat-log{
+    background:var(--paper-light);
+    border:1px solid var(--line);
+    padding:16px;
+    min-height:220px;
+    max-height:420px;
+    overflow-y:auto;
+    margin-bottom:14px;
+  }
+  .msg{
+    margin-bottom:14px;
+    font-size:14px;
+    line-height:1.55;
+  }
+  .msg .who{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:#5b6570;
+    margin-bottom:3px;
+    letter-spacing:0.03em;
+  }
+  .msg.interviewer .who{color:var(--accent);}
+  .msg.you .who{color:var(--stamp);}
+  .chat-input-row{
+    display:flex;
+    gap:10px;
+  }
+  .chat-input-row textarea{min-height:44px; margin-bottom:0; flex:1;}
+  .case-pick{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-bottom:18px;
+  }
+  .case-pick button{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    background:var(--paper-light);
+    border:1px solid var(--line);
+    padding:8px 12px;
+    cursor:pointer;
+    color:var(--ink);
+  }
+  .case-pick button.chosen{
+    background:var(--ink);
+    color:var(--white);
+    border-color:var(--ink);
+  }
+
+  /* receipt tab */
+  .receipt-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    margin-bottom:24px;
+  }
+  @media (max-width:600px){
+    .receipt-grid{grid-template-columns:1fr;}
+  }
+  .receipt-card{
+    background:var(--paper-light);
+    border:1px solid var(--line);
+    padding:16px 18px;
+  }
+  .receipt-card-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.04em;
+    color:var(--accent);
+    margin-bottom:10px;
+  }
+  .receipt-card .receipt-line{
+    font-size:13px;
+  }
+  .receipt-note{
+    margin:10px 0 0;
+    font-size:12.5px;
+    color:#6b7280;
+    line-height:1.5;
+  }
+  .receipt-total-row, .receipt-new-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    padding:12px 18px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .receipt-total-row{
+    background:var(--paper-light);
+    border:1px solid var(--line);
+    font-size:13px;
+    color:#4b5563;
+  }
+  .receipt-total-row .price{color:var(--stamp); font-weight:600;}
+  .receipt-new-row{
+    border:2px solid var(--ink);
+    margin-top:8px;
+    font-size:14px;
+  }
+  .receipt-new-row .name{font-weight:600;}
+  .receipt-new-row .price{font-size:20px; font-weight:700;}
+  .receipt-fine{
+    margin-top:20px;
+    font-size:12px;
+    color:#8a8f94;
+    max-width:560px;
+    line-height:1.6;
+  }
+
+  footer{
+    border-top:1px solid var(--line);
+    padding:26px 0 40px;
+  }
+  footer p{
+    font-size:12.5px;
+    color:#8a8f94;
+    max-width:600px;
+  }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <div class="wordmark">Un<span>wrapped</span></div>
+    <div class="tagline">the wrapper apps, minus the wrapper.</div>
+  </div>
+</header>
+
+<section class="suite" style="padding-top:32px;">
+  <div class="wrap">
+
+    <div class="key-bar">
+      <label for="api-key">YOUR GEMINI API KEY <span class="required-badge">REQUIRED</span></label>
+      <input type="password" id="api-key" placeholder="Paste your free Gemini API key here" autocomplete="off">
+      <button class="btn set-key-btn" id="set-key">Set key</button>
+      <span class="key-check" id="key-check" aria-live="polite"></span>
+      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Get a free key &rarr;</a>
+    </div>
+    <p class="key-note">Free, no card required. Stays in your browser's session storage only — cleared automatically when you close this tab. Never touches this site's server, because this site has no server.</p>
+
+    <div class="usage-bar">
+      <span><strong id="usage-day">0</strong> / 500 today</span>
+      <span class="usage-sep">&middot;</span>
+      <span><strong id="usage-minute">0</strong> / 15 this minute</span>
+    </div>
+    <p class="key-note usage-disclaimer">Estimated by counting clicks in this browser, not a real reading from Google. Won't be exact if you use this same key on another device, another browser, or another app.</p>
+
+    <div class="toolbar">
+      <button class="menu-btn" id="menu-btn" aria-expanded="false" aria-controls="drawer">
+        <span class="menu-icon">&#9776;</span>
+        <span id="current-label">00&nbsp; GET YOUR KEY</span>
+      </button>
+    </div>
+
+    <div class="drawer-backdrop" id="drawer-backdrop"></div>
+    <nav class="drawer" id="drawer" aria-hidden="true">
+      <div class="drawer-head">
+        <span>UNWRAPPED</span>
+        <button class="drawer-close" id="drawer-close" aria-label="Close menu">&times;</button>
+      </div>
+      <div class="drawer-group-label">START HERE</div>
+      <div class="drawer-item active" data-panel="start-key" role="button" tabindex="0">00 &nbsp;GET YOUR KEY</div>
+      <div class="drawer-item" data-panel="start-usage" role="button" tabindex="0">00 &nbsp;YOUR USAGE LIMITS</div>
+      <div class="drawer-item" data-panel="start-tools" role="button" tabindex="0">00 &nbsp;USING THE TOOLS</div>
+      <div class="drawer-group-label">TOOLS</div>
+      <div class="drawer-item" data-panel="resume" role="button" tabindex="0">01 &nbsp;RESUME</div>
+      <div class="drawer-item" data-panel="cover" role="button" tabindex="0">02 &nbsp;COVER LETTER</div>
+      <div class="drawer-item" data-panel="linkedin" role="button" tabindex="0">03 &nbsp;LINKEDIN</div>
+      <div class="drawer-item" data-panel="case" role="button" tabindex="0">04 &nbsp;CASE PREP</div>
+      <div class="drawer-item" data-panel="receipt" role="button" tabindex="0">05 &nbsp;PRICE CHECK: WHAT THIS REPLACES</div>
+    </nav>
+
+    <div class="panel-shell">
+
+      <!-- START: GET YOUR KEY -->
+      <div class="panel active" id="panel-start-key">
+        <h2>Start here — get your free key</h2>
+        <div class="free-banner">Everything on this site is 100% free. No subscription, no credit card, no account needed here. You only need a free Google account.</div>
+
+        <ol class="steps">
+          <li>
+            <strong>Go to Google AI Studio.</strong> Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> in a new tab and sign in with any Google account.
+          </li>
+          <li>
+            <strong>Click "Create API key."</strong> Pick or create a project when it asks — either option is fine, it doesn't matter which.
+          </li>
+          <li>
+            <strong>Copy the key.</strong> It's a long string that starts with "AIza". That's your key.
+          </li>
+          <li>
+            <strong>Important — make sure you're on the free model.</strong> This step is required. In AI Studio, look at the <strong>left sidebar and click "Rate limits."</strong> On the right side of that page, you'll see a model selector — change it to <strong>Gemini 3.5 Flash Lite.</strong> This is the free model this site uses. Other models may charge you or not work correctly here.
+          </li>
+          <li>
+            <strong>Paste your key above</strong> in the "YOUR GEMINI API KEY" field at the top of this page, then click <strong>"Set key."</strong> You'll see a green ✓ confirmation when it's saved.
+          </li>
+        </ol>
+
+        <div class="step-note">You do not need to do anything else in AI Studio. This site handles everything from here. Your key is stored only in your current browser session and cleared automatically when you close this tab.</div>
+
+        <button class="btn next-btn" data-next="start-usage">Next: your usage limits &rarr;</button>
+      </div>
+
+      <!-- START: USAGE LIMITS -->
+      <div class="panel" id="panel-start-usage">
+        <h2>Your usage limits</h2>
+        <p class="sub">Because everyone brings their own key, there's no shared pool to run out of. Your limits are yours alone.</p>
+        <div class="limit-grid">
+          <div class="limit-card">
+            <div class="limit-num">500</div>
+            <div class="limit-label">requests per day</div>
+            <p>Every click of "Generate," and every message in a case-prep chat, counts as one request. 500 is a lot, most sessions use well under 50.</p>
+          </div>
+          <div class="limit-card">
+            <div class="limit-num">15</div>
+            <div class="limit-label">requests per minute</div>
+            <p>The tighter limit in practice. If you click "Generate" many times in quick succession, you might briefly get an error. Wait a few seconds and try again.</p>
+          </div>
+        </div>
+        <p class="sub">These numbers come straight from Google's free tier for the model this site uses (Gemini 3.5 Flash Lite). Check your own limits any time at <a href="https://aistudio.google.com/usage" target="_blank" rel="noopener">aistudio.google.com &rarr; Usage</a>.</p>
+        <button class="btn next-btn" data-next="start-tools">Next: using the tools &rarr;</button>
+      </div>
+
+      <!-- START: USING THE TOOLS -->
+      <div class="panel" id="panel-start-tools">
+        <h2>Using the tools</h2>
+        <p class="sub">Paste your key into the field at the top of this page first, it stays in your browser only. Then open the menu (&#9776; button, top left) and pick a tool.</p>
+        <div class="tool-map">
+          <div class="tool-map-item">
+            <div class="tool-map-num">01</div>
+            <div><strong>Resume</strong> — paste rough bullets or an old resume, get back tightened, quantified ones.</div>
+          </div>
+          <div class="tool-map-item">
+            <div class="tool-map-num">02</div>
+            <div><strong>Cover letter</strong> — drop in your background and a job description, get a specific 3-paragraph letter.</div>
+          </div>
+          <div class="tool-map-item">
+            <div class="tool-map-num">03</div>
+            <div><strong>LinkedIn</strong> — give it your target role, get a headline and About section written for how recruiters actually search.</div>
+          </div>
+          <div class="tool-map-item">
+            <div class="tool-map-num">04</div>
+            <div><strong>Case prep</strong> — pick a case type, it runs a live back-and-forth as the interviewer.</div>
+          </div>
+          <div class="tool-map-item">
+            <div class="tool-map-num">05</div>
+            <div><strong>Price check</strong> — what each tool would otherwise cost as a subscription, and why it doesn't need to.</div>
+          </div>
+        </div>
+        <button class="btn next-btn" data-next="resume">Start with the resume tool &rarr;</button>
+      </div>
+
+      <!-- RESUME -->
+      <div class="panel" id="panel-resume">
+        <h2>Resume rewrite</h2>
+        <p class="sub">Paste your rough bullet points or an old resume, tell it the target role, and get back tightened, quantified bullets. This is exactly what Resume.io's "AI enhance" button does.</p>
+        <label for="resume-raw">Your current bullets / rough experience</label>
+        <textarea id="resume-raw" placeholder="e.g. Worked at a coffee shop, handled customers, sometimes trained new people, helped with inventory..."></textarea>
+        <div class="field-row">
+          <div>
+            <label for="resume-role">Target role / job title</label>
+            <input type="text" id="resume-role" placeholder="e.g. Healthcare Consulting Summer Analyst">
+          </div>
+          <div>
+            <label for="resume-jd">Target job description (optional, improves match)</label>
+            <input type="text" id="resume-jd" placeholder="Paste a line or two, or leave blank">
+          </div>
+        </div>
+        <button class="btn" id="resume-go">Generate resume bullets</button>
+        <div class="status" id="resume-status"></div>
+        <div class="output-wrap">
+          <div class="output-head">
+            <span class="label">OUTPUT</span>
+            <button class="btn secondary" id="resume-copy">Copy</button>
+          </div>
+          <div class="output" id="resume-output"><span class="empty-hint">Your rewritten bullets will appear here.</span></div>
+        </div>
+      </div>
+
+      <!-- COVER LETTER -->
+      <div class="panel" id="panel-cover">
+        <h2>Cover letter</h2>
+        <p class="sub">Drop in your resume (or the bullets you just made) and the job description. This is the whole business model behind CoverPaste and Coverler.</p>
+        <label for="cover-resume">Your resume / background</label>
+        <textarea id="cover-resume" placeholder="Paste your resume text, or a summary of your background..."></textarea>
+        <label for="cover-jd">Job description</label>
+        <textarea id="cover-jd" placeholder="Paste the job posting..."></textarea>
+        <label for="cover-company">Company + role (short)</label>
+        <input type="text" id="cover-company" placeholder="e.g. Deloitte, Summer Scholar Program">
+        <button class="btn" id="cover-go">Generate cover letter</button>
+        <div class="status" id="cover-status"></div>
+        <div class="output-wrap">
+          <div class="output-head">
+            <span class="label">OUTPUT</span>
+            <button class="btn secondary" id="cover-copy">Copy</button>
+          </div>
+          <div class="output" id="cover-output"><span class="empty-hint">Your cover letter will appear here.</span></div>
+        </div>
+      </div>
+
+      <!-- LINKEDIN -->
+      <div class="panel" id="panel-linkedin">
+        <h2>LinkedIn headline + about</h2>
+        <p class="sub">Tell it your target role and background. It writes a headline and About section tuned for how recruiters actually search LinkedIn, the entire pitch of most "LinkedIn AI" tools.</p>
+        <label for="li-current">Current headline / about (optional)</label>
+        <textarea id="li-current" placeholder="Paste what you have now, or leave blank to start fresh..."></textarea>
+        <div class="field-row">
+          <div>
+            <label for="li-role">Target role / industry</label>
+            <input type="text" id="li-role" placeholder="e.g. Healthcare consulting, public health analytics">
+          </div>
+          <div>
+            <label for="li-highlights">2-3 things you want to highlight</label>
+            <input type="text" id="li-highlights" placeholder="e.g. clinical shadowing, data project, tutoring">
+          </div>
+        </div>
+        <button class="btn" id="li-go">Generate headline + about</button>
+        <div class="status" id="li-status"></div>
+        <div class="output-wrap">
+          <div class="output-head">
+            <span class="label">OUTPUT</span>
+            <button class="btn secondary" id="li-copy">Copy</button>
+          </div>
+          <div class="output" id="li-output"><span class="empty-hint">Your headline and about section will appear here.</span></div>
+        </div>
+      </div>
+
+      <!-- CASE PREP -->
+      <div class="panel" id="panel-case">
+        <h2>Case interview practice</h2>
+        <p class="sub">Pick a case type. It runs a live case with you turn by turn, the exact documented prompting technique that "AI mock interviewer" apps charge $25-70/mo for.</p>
+        <div class="case-pick" id="case-pick">
+          <button data-case="profitability">Profitability</button>
+          <button data-case="market entry">Market entry</button>
+          <button data-case="market sizing">Market sizing</button>
+          <button data-case="M&A">M&amp;A / synergy</button>
+        </div>
+        <div class="chat-log" id="chat-log">
+          <div class="msg interviewer"><div class="who">INTERVIEWER</div><div>Pick a case type above to start.</div></div>
+        </div>
+        <div class="chat-input-row">
+          <textarea id="chat-input" placeholder="Type your response to the interviewer..." disabled></textarea>
+          <button class="btn" id="chat-send" disabled>Send</button>
+        </div>
+        <div class="status" id="case-status"></div>
+      </div>
+
+      <!-- THE RECEIPT -->
+      <div class="panel" id="panel-receipt">
+        <h2>Price check: what this replaces</h2>
+        <p class="sub">Same four jobs as the tools in the menu, one paid app each. All of them are a prompt in front of a model you already have access to.</p>
+
+        <div class="receipt-grid">
+
+          <div class="receipt-card">
+            <div class="receipt-card-label">01 &nbsp;RESUME</div>
+            <div class="receipt-line"><span class="name">Resume.io Pro</span><span class="price">$19.99/mo</span></div>
+            <div class="receipt-line"><span class="name">Resumeplan</span><span class="price">$20.00/mo</span></div>
+            <p class="receipt-note">AI "enhance" buttons that rewrite your bullets. That's the resume tab.</p>
+          </div>
+
+          <div class="receipt-card">
+            <div class="receipt-card-label">02 &nbsp;COVER LETTER</div>
+            <div class="receipt-line"><span class="name">CoverPaste</span><span class="price">$15&ndash;20/mo</span></div>
+            <div class="receipt-line"><span class="name">Coverler</span><span class="price">up to $79/mo</span></div>
+            <p class="receipt-note">Resume + job description in, letter out. That's the cover letter tab.</p>
+          </div>
+
+          <div class="receipt-card">
+            <div class="receipt-card-label">03 &nbsp;LINKEDIN</div>
+            <div class="receipt-line"><span class="name">LinkedIn Optimizer AI</span><span class="price">$9.99/mo</span></div>
+            <div class="receipt-line"><span class="name">Similar tools</span><span class="price">$10&ndash;15/mo</span></div>
+            <p class="receipt-note">Target role in, headline + about out. That's the LinkedIn tab.</p>
+          </div>
+
+          <div class="receipt-card">
+            <div class="receipt-card-label">04 &nbsp;CASE PREP</div>
+            <div class="receipt-line"><span class="name">AI mock interviewer apps</span><span class="price">$25&ndash;70/mo</span></div>
+            <div class="receipt-line"><span class="name">Case Prep Coach Pro</span><span class="price">$24.99/mo</span></div>
+            <p class="receipt-note">A documented prompting technique running a live case. That's the case prep tab.</p>
+          </div>
+
+        </div>
+
+        <div class="receipt-total-row">
+          <span class="name">If you subscribed to one of each</span>
+          <span class="price">~$70&ndash;135/mo</span>
+        </div>
+        <div class="receipt-new-row">
+          <span class="name">This page</span>
+          <span class="price">$0.00</span>
+        </div>
+        <p class="receipt-fine">Every panel on the other four tabs sends your input straight to Google's Gemini API with a purpose-built prompt, the same move these apps make on the backend before marking it up. Nothing you type here is stored anywhere but your own browser. Not affiliated with any app named above, or with Google.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>Not affiliated with Resume.io, CoverPaste, Coverler, or any LinkedIn/case-prep tool. Built to make a point: the model is the product, and you already have access to it.</p>
+    <p>This is a personal, open-source developer project, not a commercial product. It's a demonstration of how to call Google's Gemini API from a static page using your own key, shared for other developers to read, learn from, and adapt. If you run it, you're using your own API key under your own agreement with Google.</p>
+  </div>
+</footer>
+
+<script>
+// Shared instruction appended to every prompt to close the tone/specificity gap
+// smaller models tend to have versus Claude. Cuts generic AI phrasing and
+// forces the model to actually use what the person gave it instead of
+// defaulting to a template.
+const QUALITY_SUFFIX = " Avoid generic AI phrasing entirely, no 'passionate about,' 'proven track record,' 'detail-oriented team player,' 'fast-paced environment,' or similar filler that could apply to anyone. Vary sentence length and structure rather than repeating the same pattern every line. Use the specific, concrete details the person actually gave you, names, numbers, situations, rather than smoothing them into something generic; specificity reads as more convincing than polish. If their own wording implies a tone (casual, formal, understated, direct), match that exact register instead of defaulting to a flat, neutral one.";
+
+function getApiKey(){
+  return document.getElementById("api-key").value.trim();
+}
+
+// ---------- local usage counter (estimate only, see disclaimer in UI) ----------
+const USAGE_KEY = "unwrapped:usage";
+const MINUTE_MS = 60 * 1000;
+
+function todayStr(){
+  return new Date().toISOString().slice(0, 10);
+}
+function readUsage(){
+  try {
+    const raw = localStorage.getItem(USAGE_KEY);
+    const data = raw ? JSON.parse(raw) : null;
+    if (!data || data.date !== todayStr()) {
+      return { date: todayStr(), day: 0, stamps: [] };
+    }
+    return data;
+  } catch (e) {
+    return { date: todayStr(), day: 0, stamps: [] };
+  }
+}
+function recordUsage(){
+  const data = readUsage();
+  const now = Date.now();
+  data.day += 1;
+  data.stamps = data.stamps.filter(t => now - t < MINUTE_MS);
+  data.stamps.push(now);
+  try { localStorage.setItem(USAGE_KEY, JSON.stringify(data)); } catch (e) { /* ignore */ }
+  renderUsage();
+}
+function renderUsage(){
+  const data = readUsage();
+  const now = Date.now();
+  const minuteCount = data.stamps.filter(t => now - t < MINUTE_MS).length;
+  document.getElementById("usage-day").textContent = data.day;
+  document.getElementById("usage-minute").textContent = minuteCount;
+}
+renderUsage();
+setInterval(renderUsage, 5000); // keeps the per-minute number ticking down even with no new clicks
+
+const GEMINI_MODEL = "gemini-3.5-flash-lite";
+
+// Converts our simple {role: "user"|"assistant", content: "..."} shape
+// into Gemini's {role: "user"|"model", parts:[{text:"..."}]} shape.
+function toGeminiContents(messages){
+  return messages.map(m => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }]
+  }));
+}
+
+async function callGemini(system, messages, maxTokens) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error("NO_KEY");
+  }
+  recordUsage();
+  const url = "https://generativelanguage.googleapis.com/v1beta/models/" +
+    GEMINI_MODEL + ":generateContent?key=" + encodeURIComponent(apiKey);
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: toGeminiContents(messages),
+      systemInstruction: { parts: [{ text: system }] },
+      generationConfig: { maxOutputTokens: maxTokens || 1000 }
+    })
+  });
+  if (!response.ok) {
+    const errBody = await response.json().catch(() => ({}));
+    const msg = (errBody.error && errBody.error.message) || ("HTTP " + response.status);
+    throw new Error(msg);
+  }
+  const data = await response.json();
+  const candidate = data.candidates && data.candidates[0];
+  const parts = (candidate && candidate.content && candidate.content.parts) || [];
+  const text = parts.map(p => p.text || "").join("");
+  return text || "(no output — try again)";
+}
+
+// ---------- drawer nav ----------
+const menuBtn = document.getElementById("menu-btn");
+const drawer = document.getElementById("drawer");
+const drawerBackdrop = document.getElementById("drawer-backdrop");
+const drawerClose = document.getElementById("drawer-close");
+const currentLabel = document.getElementById("current-label");
+
+function openDrawer(){
+  drawer.classList.add("open");
+  drawerBackdrop.classList.add("open");
+  drawer.setAttribute("aria-hidden", "false");
+  menuBtn.setAttribute("aria-expanded", "true");
+}
+function closeDrawer(){
+  drawer.classList.remove("open");
+  drawerBackdrop.classList.remove("open");
+  drawer.setAttribute("aria-hidden", "true");
+  menuBtn.setAttribute("aria-expanded", "false");
+}
+menuBtn.addEventListener("click", () => {
+  drawer.classList.contains("open") ? closeDrawer() : openDrawer();
+});
+drawerBackdrop.addEventListener("click", closeDrawer);
+drawerClose.addEventListener("click", closeDrawer);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeDrawer();
+});
+
+function selectPanel(item){
+  document.querySelectorAll(".drawer-item").forEach(i => i.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+  item.classList.add("active");
+  document.getElementById("panel-" + item.dataset.panel).classList.add("active");
+  currentLabel.textContent = item.textContent.trim();
+  closeDrawer();
+}
+document.querySelectorAll(".drawer-item").forEach(item => {
+  item.addEventListener("click", () => selectPanel(item));
+  item.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectPanel(item); }
+  });
+});
+
+// "Next" buttons inside onboarding panels jump to another panel by data-panel key
+document.querySelectorAll(".next-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const target = document.querySelector('.drawer-item[data-panel="' + btn.dataset.next + '"]');
+    if (target) selectPanel(target);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+});
+
+function setStatus(id, msg, isErr){
+  const el = document.getElementById(id);
+  el.textContent = msg || "";
+  el.classList.toggle("err", !!isErr);
+}
+
+function friendlyError(e, fallback){
+  if (e && e.message === "NO_KEY") return "Add your free Gemini API key above first.";
+  if (e && e.message) return e.message;
+  return fallback;
+}
+
+function setOutput(id, text){
+  document.getElementById(id).textContent = text;
+}
+
+// ---------- click cooldown ----------
+// Gemini Flash Lite's free tier allows 15 requests/minute, one every 4s on
+// average. A short cooldown after each click keeps normal rapid-fire use
+// (regenerating a few times in a row) from tripping that limit.
+const COOLDOWN_SECONDS = 4;
+
+function startCooldown(btn, seconds){
+  if (!btn.dataset.idleText) btn.dataset.idleText = btn.textContent;
+  const idleText = btn.dataset.idleText;
+  btn.disabled = true;
+  let remaining = seconds;
+  btn.textContent = "Wait " + remaining + "s\u2026";
+  const tick = () => {
+    remaining -= 1;
+    if (remaining <= 0) {
+      btn.disabled = false;
+      btn.textContent = idleText;
+    } else {
+      btn.textContent = "Wait " + remaining + "s\u2026";
+      setTimeout(tick, 1000);
+    }
+  };
+  setTimeout(tick, 1000);
+}
+
+// ---------- persistence (localStorage — works standalone, browser-only) ----------
+function saveField(key, value){
+  try { localStorage.setItem(key, value); } catch(e) { /* storage disabled, ignore */ }
+}
+function loadField(key, el){
+  try {
+    const v = localStorage.getItem(key);
+    if (v) el.value = v;
+  } catch(e) { /* storage disabled, ignore */ }
+}
+function saveApiKey(){
+  const val = document.getElementById("api-key").value.trim();
+  if (!val) return;
+  try { sessionStorage.setItem("unwrapped:apiKey", val); } catch(e) {}
+  const check = document.getElementById("key-check");
+  check.textContent = "✓ Key set";
+  check.classList.add("visible");
+  setTimeout(() => check.classList.remove("visible"), 2500);
+}
+document.getElementById("set-key").addEventListener("click", saveApiKey);
+document.getElementById("api-key").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); saveApiKey(); }
+});
+// On load, prefer sessionStorage key; fall back to localStorage for people who had
+// the old version, then migrate it to sessionStorage and remove from localStorage.
+(function migrateKey(){
+  try {
+    const sessKey = sessionStorage.getItem("unwrapped:apiKey");
+    const localKey = localStorage.getItem("unwrapped:apiKey");
+    if (sessKey) {
+      document.getElementById("api-key").value = sessKey;
+    } else if (localKey) {
+      document.getElementById("api-key").value = localKey;
+      sessionStorage.setItem("unwrapped:apiKey", localKey);
+      localStorage.removeItem("unwrapped:apiKey");
+    }
+  } catch(e) {}
+})();
+["resume-raw","resume-role","resume-jd","cover-resume","cover-jd","cover-company","li-current","li-role","li-highlights"].forEach(id=>{
+  const el = document.getElementById(id);
+  loadField("unwrapped:"+id, el);
+  el.addEventListener("blur", ()=> saveField("unwrapped:"+id, el.value));
+});
+
+// ---------- RESUME ----------
+document.getElementById("resume-go").addEventListener("click", async () => {
+  const raw = document.getElementById("resume-raw").value.trim();
+  const role = document.getElementById("resume-role").value.trim();
+  const jd = document.getElementById("resume-jd").value.trim();
+  if (!raw) { setStatus("resume-status", "Add some rough bullets first.", true); return; }
+  const btn = document.getElementById("resume-go");
+  btn.disabled = true;
+  setStatus("resume-status", "Writing...");
+  setOutput("resume-output", "");
+  try {
+    const system = "You are a resume writer for a college student or early-career applicant applying to competitive roles (consulting, healthcare, business). Rewrite the given rough experience into 3-6 tight, quantified resume bullets. Use strong action verbs, lead with impact, keep each bullet under 25 words, use plain text with a dash prefix, no headers, no preamble, no closing remarks. If a target role or job description is given, tailor language and emphasis to it without inventing facts. Don't start every bullet with the same verb or structure." + QUALITY_SUFFIX;
+    const userMsg = "Rough experience:\n" + raw +
+      (role ? "\n\nTarget role: " + role : "") +
+      (jd ? "\n\nTarget job description: " + jd : "");
+    const out = await callGemini(system, [{ role: "user", content: userMsg }], 700);
+    setOutput("resume-output", out);
+    setStatus("resume-status", "Done.");
+  } catch (e) {
+    setStatus("resume-status", friendlyError(e, "Something went wrong. Try again."), true);
+  } finally {
+    startCooldown(btn, COOLDOWN_SECONDS);
+  }
+});
+document.getElementById("resume-copy").addEventListener("click", () => {
+  navigator.clipboard.writeText(document.getElementById("resume-output").textContent);
+  setStatus("resume-status", "Copied.");
+});
+
+// ---------- COVER LETTER ----------
+document.getElementById("cover-go").addEventListener("click", async () => {
+  const resume = document.getElementById("cover-resume").value.trim();
+  const jd = document.getElementById("cover-jd").value.trim();
+  const company = document.getElementById("cover-company").value.trim();
+  if (!resume || !jd) { setStatus("cover-status", "Add your background and the job description.", true); return; }
+  const btn = document.getElementById("cover-go");
+  btn.disabled = true;
+  setStatus("cover-status", "Writing...");
+  setOutput("cover-output", "");
+  try {
+    const system = "You write concise, specific cover letters for early-career applicants. Use the candidate's real background and the job description to write a 3-paragraph cover letter (opening hook, 1-2 concrete matches between background and role, closing). No generic filler like 'I am excited to apply.' No placeholder brackets. Plain text, no markdown headers, ready to send." + QUALITY_SUFFIX;
+    const userMsg = "Candidate background:\n" + resume +
+      "\n\nJob description:\n" + jd +
+      (company ? "\n\nCompany / role: " + company : "");
+    const out = await callGemini(system, [{ role: "user", content: userMsg }], 900);
+    setOutput("cover-output", out);
+    setStatus("cover-status", "Done.");
+  } catch (e) {
+    setStatus("cover-status", friendlyError(e, "Something went wrong. Try again."), true);
+  } finally {
+    startCooldown(btn, COOLDOWN_SECONDS);
+  }
+});
+document.getElementById("cover-copy").addEventListener("click", () => {
+  navigator.clipboard.writeText(document.getElementById("cover-output").textContent);
+  setStatus("cover-status", "Copied.");
+});
+
+// ---------- LINKEDIN ----------
+document.getElementById("li-go").addEventListener("click", async () => {
+  const current = document.getElementById("li-current").value.trim();
+  const role = document.getElementById("li-role").value.trim();
+  const highlights = document.getElementById("li-highlights").value.trim();
+  if (!role) { setStatus("li-status", "Add a target role/industry.", true); return; }
+  const btn = document.getElementById("li-go");
+  btn.disabled = true;
+  setStatus("li-status", "Writing...");
+  setOutput("li-output", "");
+  try {
+    const system = "You optimize LinkedIn profiles for a specific target role/industry, written to match how recruiters actually search and skim (keyword-relevant headline under 220 characters, About section 3-5 short paragraphs, first-person, specific not generic, no buzzword soup like 'passionate synergistic team player'). Output format exactly: 'HEADLINE:' then the headline, blank line, 'ABOUT:' then the about section. No other commentary." + QUALITY_SUFFIX;
+    const userMsg = "Target role/industry: " + role +
+      (highlights ? "\nThings to highlight: " + highlights : "") +
+      (current ? "\nCurrent headline/about to improve on:\n" + current : "\nNo current profile, write from scratch.");
+    const out = await callGemini(system, [{ role: "user", content: userMsg }], 700);
+    setOutput("li-output", out);
+    setStatus("li-status", "Done.");
+  } catch (e) {
+    setStatus("li-status", friendlyError(e, "Something went wrong. Try again."), true);
+  } finally {
+    startCooldown(btn, COOLDOWN_SECONDS);
+  }
+});
+document.getElementById("li-copy").addEventListener("click", () => {
+  navigator.clipboard.writeText(document.getElementById("li-output").textContent);
+  setStatus("li-status", "Copied.");
+});
+
+// ---------- CASE PREP (chat) ----------
+let caseHistory = [];
+let caseType = null;
+
+function appendMsg(who, text){
+  const log = document.getElementById("chat-log");
+  const div = document.createElement("div");
+  div.className = "msg " + (who === "you" ? "you" : "interviewer");
+  div.innerHTML = '<div class="who">' + (who === "you" ? "YOU" : "INTERVIEWER") + '</div><div></div>';
+  div.querySelector("div:last-child").textContent = text;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+document.querySelectorAll("#case-pick button").forEach(btn => {
+  btn.addEventListener("click", async () => {
+    document.querySelectorAll("#case-pick button").forEach(b => b.classList.remove("chosen"));
+    btn.classList.add("chosen");
+    caseType = btn.dataset.case;
+    caseHistory = [];
+    document.getElementById("chat-log").innerHTML = "";
+    document.getElementById("chat-input").disabled = true;
+    document.getElementById("chat-send").disabled = true;
+    setStatus("case-status", "Setting up case...");
+    try {
+      const system = "You are a consulting case interviewer running a live " + caseType + " case for a student practicing for interviews. Open with a realistic 3-5 sentence case prompt (a company, a business problem, an objective) appropriate to a " + caseType + " case. Then stop and wait for the candidate's opening structure. Stay in character as the interviewer for the whole conversation: give data only when asked specific questions, push back if their structure is weak, correct math errors, and keep responses concise (under 120 words) like a real interviewer would. Do not break character to explain your reasoning as an AI. Don't open every reply with the same stock phrase like 'Great question,' real interviewers vary how they respond." + QUALITY_SUFFIX;
+      caseHistory.push({ role: "user", content: "Start the case." });
+      const out = await callGemini(system, caseHistory, 400);
+      caseHistory.push({ role: "assistant", content: out });
+      // store system prompt separately since case interviewer persona must persist
+      window.__caseSystem = system;
+      appendMsg("interviewer", out);
+      setStatus("case-status", "");
+    } catch (e) {
+      setStatus("case-status", friendlyError(e, "Couldn't start the case. Try again."), true);
+    } finally {
+      document.getElementById("chat-input").disabled = false;
+      startCooldown(document.getElementById("chat-send"), COOLDOWN_SECONDS);
+    }
+  });
+});
+
+document.getElementById("chat-send").addEventListener("click", sendChat);
+document.getElementById("chat-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); }
+});
+
+async function sendChat(){
+  const input = document.getElementById("chat-input");
+  const text = input.value.trim();
+  if (!text || !caseType) return;
+  appendMsg("you", text);
+  caseHistory.push({ role: "user", content: text });
+  input.value = "";
+  const sendBtn = document.getElementById("chat-send");
+  sendBtn.disabled = true;
+  setStatus("case-status", "Interviewer is responding...");
+  try {
+    const out = await callGemini(window.__caseSystem, caseHistory, 400);
+    caseHistory.push({ role: "assistant", content: out });
+    appendMsg("interviewer", out);
+    setStatus("case-status", "");
+  } catch (e) {
+    setStatus("case-status", friendlyError(e, "Message failed to send. Try again."), true);
+  } finally {
+    startCooldown(sendBtn, COOLDOWN_SECONDS);
+  }
+}
+</script>
+</body>
+</html>
